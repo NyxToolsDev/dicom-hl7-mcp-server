@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "dicom-hl7-assistant": {
+      "command": "dicom-hl7-mcp",
+      "env": {
+        "DICOM_HL7_LICENSE_KEY": "your-license-key-here"
+      }
+    }
+  }
+}
