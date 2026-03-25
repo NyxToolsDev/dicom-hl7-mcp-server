@@ -1,5 +1,7 @@
 # DICOM/HL7 Developer AI Assistant
 
+<!-- mcp-name: io.github.NyxToolsDev/dicom-hl7-mcp-server -->
+
 An MCP (Model Context Protocol) server that gives your AI assistant deep knowledge of DICOM, HL7 v2, and FHIR standards. Built by a healthcare IT engineer with 19 years of PACS, RIS, and integration experience.
 
 **Stop Googling tag numbers. Stop guessing at field mappings. Ask your AI.**
