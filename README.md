@@ -1,14 +1,31 @@
-# DICOM/HL7 Developer AI Assistant
+# DICOM/HL7/FHIR Interoperability MCP Server
 
 <!-- mcp-name: io.github.NyxToolsDev/dicom-hl7-mcp-server -->
 
-An MCP (Model Context Protocol) server that gives your AI assistant deep knowledge of DICOM, HL7 v2, and FHIR standards. Built by a healthcare IT engineer with 19 years of PACS, RIS, and integration experience.
+**The only MCP server that bridges DICOM, HL7v2, and FHIR in one package.**
 
-**Stop Googling tag numbers. Stop guessing at field mappings. Ask your AI.**
+Built by a healthcare IT engineer with 19 years of PACS, RIS, and integration experience. This isn't a wrapper around a FHIR API or a DICOM tag dictionary — it's the interoperability knowledge that takes years on the job to build.
 
-## What It Does
+> Looking for PACS query/retrieve? Check out [dicom-mcp](https://github.com/aiblocksdev/dicom-mcp) — it's excellent for DICOM network operations. Need to **bridge standards** — map DICOM to HL7, convert HL7v2 to FHIR, generate Mirth channels, decode vendor private tags? You're in the right place.
 
-| Tool | Tier | Description |
+## What Makes This Different
+
+| Capability | This Server | DICOM-only servers | FHIR-only servers |
+|-----------|:-----------:|:------------------:|:-----------------:|
+| DICOM tag lookup + vendor quirks | Yes | Yes | No |
+| HL7v2 message parsing | Yes | No | No |
+| FHIR R4 resource mapping | Yes | No | Yes |
+| **DICOM ↔ HL7v2 mapping** | **Yes** | No | No |
+| **HL7v2 → FHIR conversion** | **Yes** | No | No |
+| **Mirth Connect channel generation** | **Yes** | No | No |
+| Vendor private tag decoding (GE, Siemens, Philips) | Yes | Some | No |
+| Integration pattern knowledge (IHE SWF, ADT flows) | Yes | No | No |
+
+**The gap in the MCP ecosystem is interoperability** — the hard work of mapping between standards, understanding vendor differences, and building integration engine configs. That's what this server does.
+
+## Tools
+
+| Tool | Tier | What It Does |
 |------|------|-------------|
 | `lookup_dicom_tag` | Free | Look up any DICOM tag by number or keyword |
 | `explain_dicom_tag` | Free | Detailed tag explanation with vendor quirks and gotchas |
@@ -29,49 +46,12 @@ An MCP (Model Context Protocol) server that gives your AI assistant deep knowled
 pip install dicom-hl7-mcp
 ```
 
-Or install from source:
+## Configure with Claude
 
-```bash
-git clone https://github.com/nyxtools/dicom-hl7-mcp.git
-cd dicom-hl7-mcp
-pip install -e .
-```
-
-## Configure with Claude Desktop
-
-Add to your Claude Desktop configuration file:
+**Claude Desktop** — add to your config:
 
 **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-### Free Tier (no license key needed)
-
-```json
-{
-  "mcpServers": {
-    "dicom-hl7-assistant": {
-      "command": "dicom-hl7-mcp"
-    }
-  }
-}
-```
-
-### Premium Tier
-
-```json
-{
-  "mcpServers": {
-    "dicom-hl7-assistant": {
-      "command": "dicom-hl7-mcp",
-      "env": {
-        "DICOM_HL7_LICENSE_KEY": "your-license-key-here"
-      }
-    }
-  }
-}
-```
-
-### Using uvx (no install needed)
 
 ```json
 {
@@ -84,143 +64,102 @@ Add to your Claude Desktop configuration file:
 }
 ```
 
-## Usage Examples
+For premium features, add your license key:
 
-### Look up a DICOM tag
+```json
+{
+  "mcpServers": {
+    "dicom-hl7-assistant": {
+      "command": "uvx",
+      "args": ["dicom-hl7-mcp"],
+      "env": {
+        "DICOM_HL7_LICENSE_KEY": "your-license-key-here"
+      }
+    }
+  }
+}
+```
 
-> "What is DICOM tag (0008,0050)?"
+## Real-World Examples
 
-Returns: AccessionNumber — SH — RIS-generated number that identifies the order. THE key field for matching RIS orders to PACS studies.
+### "What is DICOM tag (0008,0050)?"
 
-> "What DICOM tag stores the patient's weight?"
-
-Returns: (0010,1030) PatientWeight — DS — Weight in kilograms.
-
-### Explain a tag with context
-
-> "Explain the Transfer Syntax UID tag and common issues"
-
-Returns detailed explanation including what Implicit VR vs Explicit VR means, common vendor defaults (GE uses Implicit, Philips uses Explicit), JPEG compression options, and troubleshooting tips for "unable to decode" errors.
+> AccessionNumber — SH — RIS-generated number that identifies the order. THE key field for matching RIS orders to PACS studies.
 
 ### Parse an HL7 message
 
-> "Parse this HL7 message and explain what it does:"
+> "Parse this HL7 message:"
 > ```
 > MSH|^~\&|RIS|RAD|EMR|HOSP|20240315140000||ORU^R01|MSG003|P|2.5.1
 > PID|1||MRN12345^^^HOSP^MR||DOE^JOHN||19650315|M
-> OBR|1|ORD001|ACC001|CTABD^CT Abdomen^L|||20240315130000||||||||||||||||RAD|F||||||5555^SMITH^RAD
+> OBR|1|ORD001|ACC001|CTABD^CT Abdomen^L|||20240315130000
 > OBX|1|FT|&GDT^Report||FINDINGS: Normal CT.||||||F
 > ```
 
-Returns: Each segment parsed with field names, values, table lookups, and contextual explanations.
+Returns each segment parsed with field names, values, table lookups, and contextual explanations.
 
-### Map DICOM to HL7 (Premium)
+### Map DICOM → HL7 (Premium)
 
 > "What HL7 field does DICOM Accession Number map to?"
 
-Returns: OBR-3 / ORC-3 (Filler Order Number) with data type conversion notes (SH -> EI) and mapping considerations.
+Returns: OBR-3 / ORC-3 (Filler Order Number) with data type conversion notes (SH → EI) and mapping pitfalls.
 
-### Map HL7 to FHIR (Premium)
+### Map HL7v2 → FHIR R4 (Premium)
 
-> "How does PID-3 (Patient Identifier List) map to FHIR R4?"
+> "How does PID-3 (Patient Identifier List) map to FHIR?"
 
-Returns: Patient.identifier with detailed conversion guidance — CX.1->Identifier.value, CX.4->Identifier.system, CX.5->Identifier.type.
+Returns: Patient.identifier with field-by-field conversion — CX.1→Identifier.value, CX.4→Identifier.system, CX.5→Identifier.type.
 
-### Generate Mirth Connect Channel (Premium)
+### Generate a Mirth Channel (Premium)
 
 > "Generate a Mirth channel for receiving ADT messages and writing to a FHIR server"
 
-Returns: Complete channel XML with MLLP source listener, FHIR HTTP destination, transformer steps for HL7-to-FHIR conversion, ADT event filtering, and implementation notes.
+Returns: Complete channel config with MLLP source, FHIR HTTP destination, transformer steps, event filtering, and implementation notes.
 
-### Explain Integration Patterns (Premium)
-
-> "Explain the radiology workflow integration pattern"
-
-Returns: The complete IHE Scheduled Workflow profile — 15-step message flow from order placement through MWL query, image acquisition, MPPS, report dictation, and final result delivery. Includes common pitfalls (MWL AE Title mismatch, unmatched studies, MPPS not implemented) and best practices.
-
-### Validate HL7 Messages (Premium)
-
-> "Validate this HL7 message for errors"
-
-Returns: Errors (required fields missing, invalid values), warnings (non-standard table values, deprecated fields), and informational notes (optional segments present, patient identifiers found).
-
-### Decode Private Tags (Premium)
+### Decode Vendor Private Tags (Premium)
 
 > "What is Siemens private tag (0019,100C)?"
 
-Returns: B Value (Siemens) — Diffusion b-value, critical for DWI/ADC maps.
+Returns: B Value (Siemens) — Diffusion b-value, critical for DWI/ADC maps. Covers GE, Siemens, Philips, Fuji, Agfa, Canon/Toshiba, and Hologic.
 
-### Generate Sample Messages (Premium)
+## Knowledge Base
 
-> "Generate a sample ORM^O01 for a CT abdomen order"
+### Standards Coverage
+- **DICOM:** ~200 most common tags, SOP Classes, Transfer Syntaxes, private tag ranges for 7 vendors
+- **HL7 v2.x:** 15 segments, 20+ tables, message types (ADT, ORM, ORU, MDM, SIU, DFT, BAR), versions 2.3–2.9
+- **FHIR R4:** Mappings for Patient, Encounter, ServiceRequest, DiagnosticReport, Observation, AllergyIntolerance, Condition, RelatedPerson, Coverage
+- **Integration Patterns:** ADT Feed, Order-to-Result, Radiology Workflow (IHE SWF), Lab Interface, Report Distribution, Patient Merge, Charge Posting
 
-Returns: Complete, realistic HL7 message with patient demographics, ordering physician, procedure code, clinical history, and diagnosis code — ready for testing.
-
-## Knowledge Base Coverage
-
-### DICOM Dictionary
-- ~200 most common DICOM tags with accurate tag numbers, VR, VM, descriptions
-- Common SOP Classes (CT, MR, CR, DX, US, NM, PT, XA, RF, MG, SC, SR, KO, PR, RT, Encapsulated PDF)
-- Transfer Syntaxes (Implicit VR LE, Explicit VR LE, JPEG Baseline/Lossless, JPEG 2000, MPEG, RLE)
-- Private tag ranges for 7 major vendors (GE, Siemens, Philips, Fuji, Agfa, Canon/Toshiba, Hologic)
-- Structured Report tags for DICOM SR objects
-
-### HL7 v2.x Segments
-MSH, EVN, PID, PV1, PV2, ORC, OBR, OBX, DG1, AL1, NK1, IN1, GT1, TXA, FT1 — with all field positions, data types, optionality, table references, and practical notes.
-
-### HL7 Tables
-20+ commonly referenced tables including Administrative Sex (0001), Patient Class (0004), Event Type (0003), Order Control (0119), Result Status (0123), Observation Result Status (0085), Identifier Type (0203), Value Type (0125), and more.
-
-### HL7 Message Types
-ADT (A01, A02, A03, A04, A08, A11, A13, A18, A28, A31, A34, A40), ORM^O01, ORU^R01, MDM (T01, T02, T11), SIU (S12, S14, S15), DFT^P03, BAR^P01, ACK.
-
-### FHIR R4 Mappings
-PID -> Patient, PV1 -> Encounter, ORC/OBR -> ServiceRequest/DiagnosticReport, OBX -> Observation, AL1 -> AllergyIntolerance, DG1 -> Condition, NK1 -> RelatedPerson, IN1 -> Coverage, MSH -> MessageHeader/Bundle.
-
-### Integration Patterns
-ADT Feed, Order to Result, Radiology Workflow (IHE SWF), Lab Interface, Report Distribution, Patient Merge, Charge Posting — each with message flow diagrams, trigger events, common pitfalls, and best practices.
+### Where the Knowledge Comes From
+The tags, segments, and mappings are from published standards (DICOM PS3.6, HL7 v2.5.1, FHIR R4, HL7 v2-to-FHIR IG). The vendor quirks, integration tips, and "watch out for this" notes come from 19 years of building PACS/RIS/HIS interfaces in production healthcare environments.
 
 ## Premium License
 
 Free tier gives you DICOM tag lookup, HL7 parsing, and segment explanation — the tools you use every day.
 
-Premium ($19-39/mo) unlocks cross-standard mapping, Mirth generation, validation, and the deep integration knowledge that takes years to build.
+Premium unlocks cross-standard mapping, Mirth generation, validation, and the deep integration knowledge that takes years to build.
 
-**Get your license:** [https://nyxtools.lemonsqueezy.com](https://nyxtools.lemonsqueezy.com)
-
-Set your license key:
-```bash
-export DICOM_HL7_LICENSE_KEY=your-key-here
-```
+**Get your license:** [nyxtools.gumroad.com](https://nyxtools.gumroad.com)
 
 ## FAQ
 
-**Q: Do I need a license key to use the free tier?**
-A: No. Install and use the 5 free tools immediately. No account, no sign-up.
+**Do I need a license for the free tools?**
+No. Install and use the 5 free tools immediately. No account, no sign-up.
 
-**Q: What HL7 versions are supported?**
-A: The knowledge base covers v2.3 through v2.9, with primary focus on v2.5.1 (the most widely deployed version in US healthcare). Version differences are noted where applicable.
+**What HL7 versions are supported?**
+v2.3 through v2.9, with focus on v2.5.1 (the most widely deployed in US healthcare).
 
-**Q: Is the DICOM dictionary complete?**
-A: It includes ~200 of the most commonly used tags. The full DICOM dictionary has 4000+ tags — our selection covers what you encounter 95% of the time in PACS/RIS integration work.
+**Is this HIPAA compliant?**
+This tool processes standards metadata, not patient data. No PHI is stored or transmitted. Sample messages use fictional test data.
 
-**Q: Does this work with Claude Code (CLI)?**
-A: Yes. Add to your `.claude/settings.json` or use the `--mcp` flag.
-
-**Q: Can I extend the dictionary?**
-A: Yes. Set `DICOM_HL7_CUSTOM_DICTIONARY` environment variable to a JSON file path. Format documentation coming in v0.2.
-
-**Q: Is this HIPAA compliant?**
-A: This tool processes standards metadata, not patient data. No PHI is stored or transmitted. The sample messages use fictional test data.
-
-**Q: How accurate is the knowledge base?**
-A: The DICOM tags, HL7 segments, and FHIR mappings are sourced from the published standards (DICOM PS3.6, HL7 v2.5.1, FHIR R4, HL7 v2-to-FHIR IG). The practical notes, vendor quirks, and integration tips come from 19 years of hands-on PACS/RIS/HIS integration experience.
+**How does this compare to other healthcare MCP servers?**
+Other servers are excellent at specific things — PACS queries, FHIR CRUD, PubMed search. This server fills the gap between them: the interoperability layer that maps DICOM↔HL7↔FHIR and generates integration engine configs. They complement each other.
 
 ## Development
 
 ```bash
-git clone https://github.com/nyxtools/dicom-hl7-mcp.git
-cd dicom-hl7-mcp
+git clone https://github.com/NyxToolsDev/dicom-hl7-mcp-server.git
+cd dicom-hl7-mcp-server
 pip install -e ".[dev]"
 pytest
 ```
@@ -229,8 +168,6 @@ pytest
 
 MIT License. See [LICENSE](LICENSE).
 
-## Author
+---
 
-Built by NyxTools · LEW Enterprises LLC — 19 years of PACS, RIS, and healthcare integration experience.
-
-Contact: hello@nyxtools.dev
+Built by [NyxTools](https://github.com/NyxToolsDev) · LEW Enterprises LLC
