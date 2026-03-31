@@ -53,7 +53,7 @@ def require_premium(tool_name: str) -> str | None:
         return (
             f"Your license key appears to be invalid or expired for '{tool_name}'.\n\n"
             "Please check your DICOM_HL7_LICENSE_KEY environment variable.\n"
-            "If you believe this is an error, contact hello@nyxtools.dev"
+            "If you believe this is an error, contact support@nyxtools.dev"
         )
 
     return None
