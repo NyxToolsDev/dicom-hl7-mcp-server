@@ -170,4 +170,4 @@ MIT License. See [LICENSE](LICENSE).
 
 ---
 
-Built by [NyxTools](https://github.com/NyxToolsDev) · LEW Enterprises LLC
+Built by [NyxTools](https://github.com/NyxToolsDev) · NyxTools

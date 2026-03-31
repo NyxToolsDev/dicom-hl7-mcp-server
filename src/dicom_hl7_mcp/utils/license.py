@@ -18,7 +18,7 @@ LICENSE_CACHE_TTL = 86400
 
 PREMIUM_UPGRADE_MESSAGE = (
     "This is a premium feature. To unlock it, subscribe at "
-    "https://lewenterprises.lemonsqueezy.com/checkout\n\n"
+    "https://nyxtools.gumroad.com\n\n"
     "Set your license key as an environment variable:\n"
     "  export DICOM_HL7_LICENSE_KEY=your-key-here\n\n"
     "Premium features include:\n"
@@ -53,7 +53,7 @@ def require_premium(tool_name: str) -> str | None:
         return (
             f"Your license key appears to be invalid or expired for '{tool_name}'.\n\n"
             "Please check your DICOM_HL7_LICENSE_KEY environment variable.\n"
-            "If you believe this is an error, contact support@lewenterprises.com"
+            "If you believe this is an error, contact hello@nyxtools.dev"
         )
 
     return None

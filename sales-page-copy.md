@@ -126,6 +126,6 @@ export DICOM_HL7_LICENSE_KEY=your-key-here
 
 ---
 
-*Built by NyxTools · LEW Enterprises LLC — 19 years of PACS, RIS, and healthcare integration experience.*
+*Built by NyxTools — 19 years of PACS, RIS, and healthcare integration experience.*
 
 *Questions? hello@nyxtools.dev*

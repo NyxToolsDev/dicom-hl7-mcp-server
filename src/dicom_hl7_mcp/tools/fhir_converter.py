@@ -11,15 +11,7 @@ from dicom_hl7_mcp.utils.license import require_premium
 
 
 def validate_hl7_message(message: str) -> str:
-    """Validate an HL7 v2.x message against the standard.
-
-    Args:
-        message: Raw HL7 message string.
-
-    Returns:
-        Validation results: required fields present, data types correct,
-        table values valid, structural issues.
-    """
+    """Validate an HL7 v2.x message against the standard."""
     premium_check = require_premium("validate_hl7_message")
     if premium_check:
         return premium_check
@@ -27,94 +19,140 @@ def validate_hl7_message(message: str) -> str:
     if not message or not message.strip():
         return "Error: Empty message provided."
 
-    # Normalize
-    clean = message.strip()
-    clean = clean.replace("\\r\\n", "\n").replace("\\r", "\n").replace("\\n", "\n")
-    clean = clean.replace("\r\n", "\n").replace("\r", "\n")
-    segments = [s.strip() for s in clean.split("\n") if s.strip()]
+    segments = _normalize_message(message)
+    if not segments:
+        return "FATAL: No segments found in message."
 
     errors: list[str] = []
     warnings: list[str] = []
     info: list[str] = []
 
-    # 1. Check MSH
-    if not segments:
-        return "FATAL: No segments found in message."
-
-    if not segments[0].startswith("MSH"):
-        errors.append("Message must start with MSH segment.")
+    # 1. Validate MSH header
+    result = _validate_msh(segments[0], errors, warnings)
+    if result is None:
         return _format_validation_result(errors, warnings, info)
+    field_sep, component_sep, msg_type_str = result
 
-    msh = segments[0]
+    # 2. Validate segment structure
+    segment_ids = [s.split(field_sep)[0] if field_sep in s else s[:3] for s in segments]
+    _validate_segment_order(msg_type_str, segment_ids, errors, info)
+
+    # 3. Validate individual segments
+    _validate_segments(segments, field_sep, component_sep, errors, warnings, info)
+
+    # 4. Cross-segment validation
+    _validate_cross_segments(segments, segment_ids, field_sep, component_sep, errors, warnings, info)
+
+    return _format_validation_result(errors, warnings, info)
+
+
+def _normalize_message(message: str) -> list[str]:
+    """Normalize line endings and split into segments."""
+    clean = message.strip()
+    clean = clean.replace("\\r\\n", "\n").replace("\\r", "\n").replace("\\n", "\n")
+    clean = clean.replace("\r\n", "\n").replace("\r", "\n")
+    return [s.strip() for s in clean.split("\n") if s.strip()]
+
+
+def _validate_msh(
+    msh: str, errors: list[str], warnings: list[str],
+) -> tuple[str, str, str] | None:
+    """Validate MSH segment. Returns (field_sep, component_sep, msg_type_str) or None on fatal error."""
+    if not msh.startswith("MSH"):
+        errors.append("Message must start with MSH segment.")
+        return None
+
     if len(msh) < 8:
         errors.append("MSH segment too short (missing encoding characters).")
-        return _format_validation_result(errors, warnings, info)
+        return None
 
     field_sep = msh[3]
-    encoding_chars = msh[4:8]
-    component_sep = encoding_chars[0]
-
-    # Parse MSH fields
+    component_sep = msh[4]
     msh_fields = _split_msh_fields(msh, field_sep)
 
-    # Validate MSH required fields
     _validate_required_field(msh_fields, 7, "MSH-7 (Date/Time of Message)", errors)
     _validate_required_field(msh_fields, 9, "MSH-9 (Message Type)", errors)
     _validate_required_field(msh_fields, 10, "MSH-10 (Message Control ID)", errors)
     _validate_required_field(msh_fields, 11, "MSH-11 (Processing ID)", errors)
     _validate_required_field(msh_fields, 12, "MSH-12 (Version ID)", errors)
 
-    # Validate MSH-7 date format
     if len(msh_fields) > 7 and msh_fields[7]:
         dt_str = msh_fields[7].split(component_sep)[0]
         if not re.match(r"^\d{8,14}", dt_str):
             errors.append(f"MSH-7 date/time format invalid: '{dt_str}'. Expected YYYYMMDD[HHMMSS].")
 
-    # Validate MSH-9 message type
-    msg_type_str = ""
-    if len(msh_fields) > 9 and msh_fields[9]:
-        msg_type_str = msh_fields[9].replace(component_sep, "^")
-        if "^" not in msg_type_str:
-            warnings.append(f"MSH-9 should contain message type and trigger event (e.g., ADT^A01). Got: '{msg_type_str}'.")
-        else:
-            parts = msg_type_str.split("^")
-            full_type = f"{parts[0]}^{parts[1]}" if len(parts) >= 2 else parts[0]
-            if full_type not in HL7_MESSAGE_TYPES and parts[0] not in ("ACK",):
-                warnings.append(f"Message type '{full_type}' not found in standard message type table.")
+    msg_type_str = _validate_msh_message_type(msh_fields, component_sep, warnings)
+    _validate_msh_processing_id(msh_fields, component_sep, errors, warnings)
 
-    # Validate MSH-11 processing ID
-    if len(msh_fields) > 11 and msh_fields[11]:
-        proc_id = msh_fields[11].split(component_sep)[0]
-        if proc_id not in ("P", "D", "T"):
-            errors.append(f"MSH-11 Processing ID must be P, D, or T. Got: '{proc_id}'.")
-        if proc_id == "D":
-            warnings.append("MSH-11 Processing ID is 'D' (Debug). Do not use in production.")
-        elif proc_id == "T":
-            warnings.append("MSH-11 Processing ID is 'T' (Training). Do not use in production.")
+    return field_sep, component_sep, msg_type_str
 
-    # 2. Validate segment order and required segments
-    segment_ids = [s.split(field_sep)[0] if field_sep in s else s[:3] for s in segments]
 
-    # Check for expected segments based on message type
-    if msg_type_str:
+def _validate_msh_message_type(
+    msh_fields: list[str], component_sep: str, warnings: list[str],
+) -> str:
+    """Validate MSH-9 message type field. Returns the message type string."""
+    if len(msh_fields) <= 9 or not msh_fields[9]:
+        return ""
+    msg_type_str = msh_fields[9].replace(component_sep, "^")
+    if "^" not in msg_type_str:
+        warnings.append(f"MSH-9 should contain message type and trigger event (e.g., ADT^A01). Got: '{msg_type_str}'.")
+    else:
         parts = msg_type_str.split("^")
         full_type = f"{parts[0]}^{parts[1]}" if len(parts) >= 2 else parts[0]
-        type_info = HL7_MESSAGE_TYPES.get(full_type)
-        if type_info:
-            for req_seg in type_info.get("required_segments", []):
-                if req_seg not in segment_ids:
-                    errors.append(f"Required segment {req_seg} is missing for {full_type} message.")
-            for opt_seg in type_info.get("optional_segments", []):
-                if opt_seg in segment_ids:
-                    info.append(f"Optional segment {opt_seg} is present.")
+        if full_type not in HL7_MESSAGE_TYPES and parts[0] not in ("ACK",):
+            warnings.append(f"Message type '{full_type}' not found in standard message type table.")
+    return msg_type_str
 
-    # 3. Validate individual segments
+
+def _validate_msh_processing_id(
+    msh_fields: list[str], component_sep: str, errors: list[str], warnings: list[str],
+) -> None:
+    """Validate MSH-11 processing ID."""
+    if len(msh_fields) <= 11 or not msh_fields[11]:
+        return
+    proc_id = msh_fields[11].split(component_sep)[0]
+    if proc_id not in ("P", "D", "T"):
+        errors.append(f"MSH-11 Processing ID must be P, D, or T. Got: '{proc_id}'.")
+    if proc_id == "D":
+        warnings.append("MSH-11 Processing ID is 'D' (Debug). Do not use in production.")
+    elif proc_id == "T":
+        warnings.append("MSH-11 Processing ID is 'T' (Training). Do not use in production.")
+
+
+def _validate_segment_order(
+    msg_type_str: str, segment_ids: list[str], errors: list[str], info: list[str],
+) -> None:
+    """Check for required/optional segments based on message type."""
+    if not msg_type_str:
+        return
+    parts = msg_type_str.split("^")
+    full_type = f"{parts[0]}^{parts[1]}" if len(parts) >= 2 else parts[0]
+    type_info = HL7_MESSAGE_TYPES.get(full_type)
+    if not type_info:
+        return
+    for req_seg in type_info.get("required_segments", []):
+        if req_seg not in segment_ids:
+            errors.append(f"Required segment {req_seg} is missing for {full_type} message.")
+    for opt_seg in type_info.get("optional_segments", []):
+        if opt_seg in segment_ids:
+            info.append(f"Optional segment {opt_seg} is present.")
+
+
+def _validate_segments(
+    segments: list[str],
+    field_sep: str,
+    component_sep: str,
+    errors: list[str],
+    warnings: list[str],
+    info: list[str],
+) -> None:
+    """Validate individual segments against the HL7 standard."""
     for seg_text in segments:
         seg_fields = seg_text.split(field_sep)
         seg_id = seg_fields[0]
 
         if seg_id == "MSH":
-            continue  # Already validated
+            continue
 
         seg_info = HL7_SEGMENTS.get(seg_id)
         if seg_info is None:
@@ -124,7 +162,6 @@ def validate_hl7_message(message: str) -> str:
                 warnings.append(f"Unknown segment: {seg_id}")
             continue
 
-        # Check required fields
         for field_def in seg_info.get("fields", []):
             if field_def["required"] == "R":
                 pos = field_def["position"]
@@ -133,7 +170,6 @@ def validate_hl7_message(message: str) -> str:
                         f"{seg_id}-{pos} ({field_def['name']}) is required but empty/missing."
                     )
 
-            # Validate table values
             if field_def.get("table") and field_def["position"] < len(seg_fields):
                 value = seg_fields[field_def["position"]]
                 if value:
@@ -146,38 +182,37 @@ def validate_hl7_message(message: str) -> str:
                                 f"not found in Table {field_def['table']} ({table_info['name']})."
                             )
 
-    # 4. Additional cross-segment validation
+
+def _validate_cross_segments(
+    segments: list[str],
+    segment_ids: list[str],
+    field_sep: str,
+    component_sep: str,
+    errors: list[str],
+    warnings: list[str],
+    info: list[str],
+) -> None:
+    """Cross-segment validation (PID, ORC/OBR matching)."""
     if "PID" in segment_ids:
-        pid_text = segments[segment_ids.index("PID")]
-        pid_fields = pid_text.split(field_sep)
-        # Check PID-3 (Patient Identifier)
+        pid_fields = segments[segment_ids.index("PID")].split(field_sep)
         if len(pid_fields) > 3 and pid_fields[3]:
             info.append(f"Patient ID: {pid_fields[3].split(component_sep)[0]}")
         else:
             errors.append("PID-3 (Patient Identifier List) is empty — this is required.")
-
-        # Check PID-5 (Patient Name)
         if len(pid_fields) > 5 and pid_fields[5]:
             info.append(f"Patient Name: {pid_fields[5]}")
         else:
             warnings.append("PID-5 (Patient Name) is empty.")
 
-    # Check for matching ORC/OBR Accession Numbers
     if "ORC" in segment_ids and "OBR" in segment_ids:
-        orc_text = segments[segment_ids.index("ORC")]
-        obr_text = segments[segment_ids.index("OBR")]
-        orc_fields = orc_text.split(field_sep)
-        obr_fields = obr_text.split(field_sep)
-
+        orc_fields = segments[segment_ids.index("ORC")].split(field_sep)
+        obr_fields = segments[segment_ids.index("OBR")].split(field_sep)
         orc_filler = orc_fields[3] if len(orc_fields) > 3 else ""
         obr_filler = obr_fields[3] if len(obr_fields) > 3 else ""
-
         if orc_filler and obr_filler and orc_filler != obr_filler:
             warnings.append(
                 f"ORC-3 ('{orc_filler}') and OBR-3 ('{obr_filler}') Filler Order Numbers don't match."
             )
-
-    return _format_validation_result(errors, warnings, info)
 
 
 def _split_msh_fields(msh: str, field_sep: str) -> list[str]:
