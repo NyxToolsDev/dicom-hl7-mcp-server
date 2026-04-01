@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dicom-hl7-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "DICOM/HL7 Developer AI Assistant — MCP server for healthcare integration engineers"
 readme = "README.md"
 license = {text = "MIT"}
