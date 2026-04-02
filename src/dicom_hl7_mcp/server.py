@@ -29,10 +29,14 @@ from dicom_hl7_mcp.tools.hl7_parser import (
     parse_hl7_message,
 )
 from dicom_hl7_mcp.tools.mirth_generator import generate_mirth_channel
+from dicom_hl7_mcp.tools.pacs_combined import PACS_COMBINED_TOOLS, dispatch_pacs_combined_tool
+from dicom_hl7_mcp.tools.pacs_connectivity import PACS_TOOLS, dispatch_pacs_tool
+from dicom_hl7_mcp.pacs.phi_guard import install_phi_filter
 
-# Configure logging
+# Configure logging with PHI redaction
 logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO))
 logger = logging.getLogger("dicom_hl7_mcp")
+install_phi_filter("dicom_hl7_mcp")
 
 # Create the MCP server
 app = Server("dicom-hl7-mcp")
@@ -276,7 +280,7 @@ TOOLS = [
             "required": ["message_type"],
         },
     ),
-]
+] + PACS_TOOLS + PACS_COMBINED_TOOLS
 
 
 # ---------------------------------------------------------------
@@ -342,6 +346,13 @@ def _dispatch_tool(name: str, arguments: dict) -> str:
             arguments["message_type"],
             arguments.get("scenario", ""),
         )
+
+    # PACS tools
+    elif name.startswith("pacs_study_"):
+        return dispatch_pacs_combined_tool(name, arguments)
+    elif name.startswith("pacs_"):
+        return dispatch_pacs_tool(name, arguments)
+
     else:
         return f"Unknown tool: {name}"
 

@@ -29,6 +29,8 @@ PREMIUM_UPGRADE_MESSAGE = (
     "  - Integration pattern explanations\n"
     "  - Vendor private tag decoding\n"
     "  - Sample message generation\n"
+    "  - PACS connectivity (C-FIND, C-MOVE, DICOMweb)\n"
+    "  - PACS study interoperability summary\n"
 )
 
 
