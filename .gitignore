@@ -43,3 +43,4 @@ Thumbs.db
 
 # License cache
 .dicom-hl7-mcp/
+.mcpregistry_github_token

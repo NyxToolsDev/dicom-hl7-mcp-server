@@ -6,7 +6,7 @@
 
 **The only MCP server that bridges DICOM, HL7v2, and FHIR in one package — with optional PACS connectivity.**
 
-Built by a healthcare IT engineer with 19 years of PACS, RIS, and integration experience. This isn't a wrapper around a FHIR API or a DICOM tag dictionary — it's the interoperability knowledge that takes years on the job to build, plus the ability to connect to real PACS systems.
+Built by a healthcare IT engineer with 16 years of PACS, RIS, and integration experience. This isn't a wrapper around a FHIR API or a DICOM tag dictionary — it's the interoperability knowledge that takes years on the job to build, plus the ability to connect to real PACS systems.
 
 ## What Makes This Different
 
@@ -235,7 +235,7 @@ Returns: Complete channel config with MLLP source, FHIR HTTP destination, transf
 - **Integration Patterns:** ADT Feed, Order-to-Result, Radiology Workflow (IHE SWF), Lab Interface, Report Distribution, Patient Merge, Charge Posting
 
 ### Where the Knowledge Comes From
-The tags, segments, and mappings are from published standards (DICOM PS3.6, HL7 v2.5.1, FHIR R4, HL7 v2-to-FHIR IG). The vendor quirks, integration tips, and "watch out for this" notes come from 19 years of building PACS/RIS/HIS interfaces in production healthcare environments.
+The tags, segments, and mappings are from published standards (DICOM PS3.6, HL7 v2.5.1, FHIR R4, HL7 v2-to-FHIR IG). The vendor quirks, integration tips, and "watch out for this" notes come from 16 years of building PACS/RIS/HIS interfaces in production healthcare environments.
 
 ## Premium License
 

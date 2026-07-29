@@ -6,7 +6,7 @@ You know the drill. You're building an HL7 interface, and you need to know which
 
 **What if your AI assistant just... knew?**
 
-The DICOM/HL7 Developer AI Assistant is an MCP server that gives Claude (or any MCP-compatible AI) deep, accurate knowledge of healthcare interoperability standards. Not generic knowledge scraped from the web — knowledge built from 19 years of real-world PACS, RIS, and integration experience.
+The DICOM/HL7 Developer AI Assistant is an MCP server that gives Claude (or any MCP-compatible AI) deep, accurate knowledge of healthcare interoperability standards. Not generic knowledge scraped from the web — knowledge built from 16 years of real-world PACS, RIS, and integration experience.
 
 ---
 
@@ -126,6 +126,6 @@ export DICOM_HL7_LICENSE_KEY=your-key-here
 
 ---
 
-*Built by NyxTools — 19 years of PACS, RIS, and healthcare integration experience.*
+*Built by NyxTools — 16 years of PACS, RIS, and healthcare integration experience.*
 
 *Questions? support@nyxtools.dev*
