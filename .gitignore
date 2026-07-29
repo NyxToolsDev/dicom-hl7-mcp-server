@@ -44,3 +44,6 @@ Thumbs.db
 # License cache
 .dicom-hl7-mcp/
 .mcpregistry_github_token
+.mcpregistry_registry_token
+CODE-GUIDE.md
+mcp-publisher.exe
